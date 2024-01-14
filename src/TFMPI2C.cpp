@@ -37,7 +37,7 @@
  *  that pass back distance data only. One assumes the default I2C address
  *  and the other requires an explicit address.
  *
- * `sendCommand( cmnd, param, addr)`
+ * `sendCommand( TheWire, cmnd, param, addr)`
  *  The function sends an unsigned 32-bit command and an unsigned 32-bit
  *  parameter value plus an optional, unsigned, 8-bit I2C device address.
  *  If the function completes without error it returns `true` and sets
@@ -82,7 +82,6 @@
  */
 
 #include <TFMPI2C.h>       //  TFMini-Plus I2C library header
-#include <Wire.h>          //  Arduino I2C/Two-Wire Library
 
 // Constructor/Destructor
 TFMPI2C::TFMPI2C(){}
@@ -90,7 +89,7 @@ TFMPI2C::~TFMPI2C(){}
 
 // = = = = =  GET A FRAME OF DATA FROM THE DEVICE  = = = = = = = = = =
 //
-bool TFMPI2C::getData( int16_t &dist, int16_t &flux, int16_t &temp, uint8_t addr)
+bool TFMPI2C::getData( TwoWire TheWire, int16_t &dist, int16_t &flux, int16_t &temp, uint8_t addr)
 {
     // `frame` data array is declared in TFMPI2C.h
     status = TFMP_READY;    // clear status of any error condition
@@ -100,24 +99,24 @@ bool TFMPI2C::getData( int16_t &dist, int16_t &flux, int16_t &temp, uint8_t addr
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // The device can also return data in millimeters, but its
     // resolution is only 5mm (o.5cm) and its accuracy is ±5cm.
-    if( sendCommand( I2C_FORMAT_CM, 0, addr) != true) return false;
+    if( sendCommand( TheWire, I2C_FORMAT_CM, 0, addr) != true) return false;
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Step 1 - Get data from the device.
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Request one data-frame from the slave device address
     // and close the I2C interface.
-    Wire.requestFrom( (int)addr, TFMP_FRAME_SIZE, 1);
+    TheWire.requestFrom( (int)addr, TFMP_FRAME_SIZE, 1);
 
     memset( frame, 0, sizeof( frame));     // Clear the data-frame buffer.
     for( uint8_t i = 0; i < TFMP_FRAME_SIZE; i++)
     {
-      if( Wire.peek() == -1)     // If there is no next byte...
+      if( TheWire.peek() == -1)     // If there is no next byte...
       {
         status = TFMP_I2CREAD;   // then set error...
         return false;            // and return "false."
       }
-      else frame[ i] = uint8_t( Wire.read());
+      else frame[ i] = uint8_t( TheWire.read());
     }
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -162,23 +161,23 @@ bool TFMPI2C::getData( int16_t &dist, int16_t &flux, int16_t &temp, uint8_t addr
 }
 
 // Pass back data using default I2C address.
-bool TFMPI2C::getData( int16_t &dist, int16_t &flux, int16_t &temp)
+bool TFMPI2C::getData( TwoWire TheWire, int16_t &dist, int16_t &flux, int16_t &temp)
 {
-  return getData( dist, flux, temp, TFMP_DEFAULT_ADDRESS);
+  return getData( TheWire, dist, flux, temp, TFMP_DEFAULT_ADDRESS);
 }
 
 // Pass back only distance data using given I2C address.
-bool TFMPI2C::getData( int16_t &dist, uint8_t addr)
+bool TFMPI2C::getData( TwoWire TheWire, int16_t &dist, uint8_t addr)
 {
   static int16_t flux, temp;
-  return getData( dist, flux, temp, addr);
+  return getData( TheWire, dist, flux, temp, addr);
 }
 
 // Pass back only distance data using default I2C address.
-bool TFMPI2C::getData( int16_t &dist)
+bool TFMPI2C::getData( TwoWire TheWire, int16_t &dist)
 {
   static int16_t flux, temp;
-  return getData( dist, flux, temp, TFMP_DEFAULT_ADDRESS);
+  return getData( TheWire, dist, flux, temp, TFMP_DEFAULT_ADDRESS);
 }
 //
 // - - - - - - End of Get a Frame of Data  - - - - - - - - - -
@@ -188,7 +187,7 @@ bool TFMPI2C::getData( int16_t &dist)
 //
 // Create a proper command byte array, send the command,
 // get a response, and return the status.
-bool TFMPI2C::sendCommand( uint32_t cmnd, uint32_t param, uint8_t addr)
+bool TFMPI2C::sendCommand( TwoWire TheWire, uint32_t cmnd, uint32_t param, uint8_t addr)
 {
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Step 1 - Build the command data to send to the device
@@ -232,18 +231,18 @@ bool TFMPI2C::sendCommand( uint32_t cmnd, uint32_t param, uint8_t addr)
     // Step 2 - Send the command data array to the device
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     // Begin transmission to the I2C slave device
-    Wire.beginTransmission( addr);
+    TheWire.beginTransmission( addr);
     // Queue command data array for transmission to the I2C device
-    if( Wire.write( cmndData, (size_t)cmndLen) != cmndLen)
+    if( TheWire.write( cmndData, (size_t)cmndLen) != cmndLen)
     {
         status = TFMP_I2CLENGTH;  // then set status code...
-        Wire.write( 0);           // Put a zero in the xmit buffer.
-        Wire.endTransmission( true);   // Send and Close the I2C interface.
+        TheWire.write( 0);           // Put a zero in the xmit buffer.
+        TheWire.endTransmission( true);   // Send and Close the I2C interface.
         return false;             // and return "false."
     }
 
     // Transmit the bytes and a stop message to release the I2C bus.
-    if( Wire.endTransmission( true) != 0)  // If write error...
+    if( TheWire.endTransmission( true) != 0)  // If write error...
     {
         status = TFMP_I2CWRITE;       // then set status code...
         return false;                 // and return "false."
@@ -266,12 +265,12 @@ bool TFMPI2C::sendCommand( uint32_t cmnd, uint32_t param, uint8_t addr)
 
     // Request reply data from the device and
     // close the I2C interface.
-    Wire.requestFrom( (int)addr, (int)replyLen, 1);
+    TheWire.requestFrom( (int)addr, (int)replyLen, 1);
 
     memset( reply, 0, sizeof( reply));   // Clear the reply data buffer.
     for( uint8_t i = 0; i < replyLen; i++)
     {
-      reply[ i] = (uint8_t)Wire.read();
+      reply[ i] = (uint8_t)TheWire.read();
     }
     
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -318,9 +317,9 @@ bool TFMPI2C::sendCommand( uint32_t cmnd, uint32_t param, uint8_t addr)
 }
 
 // Send a command using default I2C address
-bool TFMPI2C::sendCommand( uint32_t cmnd, uint32_t param)
+bool TFMPI2C::sendCommand( TwoWire TheWire, uint32_t cmnd, uint32_t param)
 {
-  return sendCommand( cmnd, param, TFMP_DEFAULT_ADDRESS);
+  return sendCommand( TheWire, cmnd, param, TFMP_DEFAULT_ADDRESS);
 }
 //
 // - - - - - - -  End of Send a Command  - - - - - - - - - - - -
@@ -330,9 +329,9 @@ bool TFMPI2C::sendCommand( uint32_t cmnd, uint32_t param)
 // waiting for a transfer to finish.  This function bypasses the Wire
 // library and sends 8 phony clock cycles, a NAK, and a STOP signal to
 // the SDA and SCL pin numbers.  This flushes any I2C data transfer
-// that had been in progress.  It concludes by calling `Wire.begin()`.
+// that had been in progress.  It concludes by calling `TheWire.begin()`.
 //
-void TFMPI2C::recoverI2CBus( uint8_t dataPin, uint8_t clockPin)
+void TFMPI2C::recoverI2CBus( TwoWire TheWire, uint8_t dataPin, uint8_t clockPin)
 {
     // try I2C bus recovery at 100kHz: 5us high, 5us low
     // keep SDA high during recovery    
@@ -361,21 +360,7 @@ void TFMPI2C::recoverI2CBus( uint8_t dataPin, uint8_t clockPin)
     pinMode( dataPin, INPUT);
     pinMode( clockPin, INPUT);
     //  restore Wire library
-    Wire.begin();
-}
-//
-//  Recover I2C bus using default pin numbers
-//  defined in every board's 'variants.h` file.
-void TFMPI2C::recoverI2CBus()
-{
-    Serial.println( "Recover default I2C bus.");
-    recoverI2CBus( PIN_WIRE_SDA, PIN_WIRE_SCL);
-
-    // If the Arduino has a second I2C interface...
-    #if WIRE_INTERFACES_COUNT > 1
-        Serial.println( "Second I2C bus detected.");
-        recoverI2CBus( PIN_WIRE1_SDA, PIN_WIRE1_SCL);
-    #endif
+    TheWire.begin();
 }
 //
 // - - - - -  End of Recover I2C Bus function  - - - - - -

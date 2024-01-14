@@ -28,28 +28,28 @@ In the example code, `printStatus()` or `printErrorStatus()` has been replaced w
 
 The **TFMini-S** is largely compatible with the **TFMini-Plus** and both are able to use this library.  Although the **TFLuna** is compatible with the **TFMini-Plus** in the UART (serial) mode, in **I2C** mode it is very different and therefor this library is _not compatible_ with the **TFLuna** in **I2C** mode.  This library is also *not compatible* with the **TFMini**, a product with its own unique command and data structure.
 
-Since hardware version 1.3.5 and firmware version 1.9.0, the TFMini-Plus can be configured to use the **I2C** (two-wire) protocol for its communication interface.  The command to configure the device for **I2C** communication must be sent using the **UART** interface.  Therefore, configuration should be made prior to the device's service installation either by using the TFMini-Plus library or by using a serial GUI test application available from the manufacturer.  Thereafter, this libarary can be used for all further communication with the device.  _When switching between communication modes, please remember to switch the data cables, too.  That sounds obvious, but has tripped me up more than once._
+Since hardware version 1.3.5 and firmware version 1.9.0, the TFMini-Plus can be configured to use the **I2C** (two-wire) protocol for its communication interface.  The command to configure the device for **I2C** communication must be sent using the **UART** interface.  Therefore, configuration should be made prior to the device's service installation either by using the TFMini-Plus library or by using a serial GUI test application available from the manufacturer.  Thereafter, this library can be used for all further communication with the device.  _When switching between communication modes, please remember to switch the data cables, too.  That sounds obvious, but has tripped me up more than once._
 
 This library calls the Arduino **Wire** library.  Although largely standardized, the Wire library has been customized to accommodate a wide variety of Arduino boards that are available.
 <hr />
 
 ### Arduino Library Commands
 
-`getData( dist, flux, temp, addr)`&nbsp; passes back three, signed, 16-bit measurement data values and sends an optional, unsigned, 8-bit address.  If the default device address is used, the optional `addr` value may be omitted.  Otherwise, a correct `addr` value always must be sent.  If the function completes without error, it returns 'True' and sets the public, one-byte 'status' code to zero.  Otherwise, it returns 'False' and sets the 'status' code to a library defined error code.
+`getData( TheWire, dist, flux, temp, addr)`&nbsp; passes back three, signed, 16-bit measurement data values and sends an optional, unsigned, 8-bit address.  If the default device address is used, the optional `addr` value may be omitted.  Otherwise, a correct `addr` value always must be sent.  If the function completes without error, it returns 'True' and sets the public, one-byte 'status' code to zero.  Otherwise, it returns 'False' and sets the 'status' code to a library defined error code. `TheWire` is aa Arduino `TwoWire` object that represents the **I2C** bus that the device is on.
 
 Measurement data values are passed-back in three, 16-bit, signed integer variables:
 <br />&nbsp;&nbsp;&#9679;&nbsp; `dist` Distance to target in centimeters. Range: 0 - 1200
 <br />&nbsp;&nbsp;&#9679;&nbsp; `flux` Strength or quality of return signal or error. Range: -1, 0 - 32767
 <br />&nbsp;&nbsp;&#9679;&nbsp; `temp` Temperature of device chip in code. Range: -25°C to 125°C
 
-`getData( dist)`&nbsp; and `getData( dist, addr)`&nbsp; functions are included for further simplicity and convenience.  These two functions pass back only distance data and use either the default or an assigned I2C address.
+`getData( TheWire, dist)`&nbsp; and `getData( dist, addr)`&nbsp; functions are included for further simplicity and convenience.  These two functions pass back only distance data and use either the default or an assigned I2C address.
 
-`sendCommand( cmnd, param, addr)`&nbsp; function sends an unsigned, 32-bit command, an unsigned, 32-bit parameter and an optional, unsigned, 8-bit I2C address to the device.  A proper command (`cmnd`) must be chosen from the library's list of defined commands.  A parameter (`param`) can be entered directly (0x10, 250, etc.), or chosen from the Library's list of defined parameters.  For many commands, i.e. `HARD_RESET`, the correct `param` is a `0` (zero).  If the default device address is used, the optional `addr` value may be omitted.  If the function completes without error, it returns 'true' and sets a public, one-byte 'status' code to zero.  Otherwise, it returns 'false' and sets the 'status' to a Library defined error code.
+`sendCommand( TheWire, cmnd, param, addr)`&nbsp; function sends an unsigned, 32-bit command, an unsigned, 32-bit parameter and an optional, unsigned, 8-bit I2C address to the device.  A proper command (`cmnd`) must be chosen from the library's list of defined commands.  A parameter (`param`) can be entered directly (0x10, 250, etc.), or chosen from the Library's list of defined parameters.  For many commands, i.e. `HARD_RESET`, the correct `param` is a `0` (zero).  If the default device address is used, the optional `addr` value may be omitted.  If the function completes without error, it returns 'true' and sets a public, one-byte 'status' code to zero.  Otherwise, it returns 'false' and sets the 'status' to a Library defined error code.
 
 `cmnd`&nbsp;&nbsp; The defined commands are:<br />
 `GET_FIRMWARE_VERSION`, `TRIGGER_DETECTION`, `SOFT_RESET`, `HARD_RESET`, `SAVE_SETTINGS`, `SET_FRAME_RATE`, `SET_BAUD_RATE`, `STANDARD_FORMAT_CM`, `STANDARD_FORMAT_MM`, `ENABLE_OUTPUT`, `DISABLE_OUTPUT`, `SET_I2C_ADDRESS`, `SET_SERIAL_MODE`, `SET_I2C_MODE`, `I2C_FORMAT_CM`, `I2C_FORMAT_MM`
 
-`param`&nbsp;&nbsp; The defined paramters are:<br />
+`param`&nbsp;&nbsp; The defined parameters are:<br />
 `BAUD_9600`, `BAUD_14400`, `BAUD_19200`, `BAUD_56000`, `BAUD_115200`, `BAUD_460800`, `BAUD_921600`<br />
 and<br />
 `FRAME_0`, `FRAME_1`, `FRAME_2`, `FRAME_5`, `FRAME_10`, `FRAME_20`, `FRAME_25`, `FRAME_50`, `FRAME_100`, `FRAME_125`, `FRAME_200`, `FRAME_250`, `FRAME_500`, `FRAME_1000`
@@ -64,7 +64,7 @@ Although I2C address of the device can be changed while in UART communication mo
 
 The `HARD_RESET` command (Restore Factory Settings) will reset the device to the default address of `0x10`. The `SOFT_RESET` command (System Reset) appears to have no effect on the I2C address.  The `HARD_RESET` command will **not** restore the device to the default, **UART** communication interface mode.  The **only** way to return the device to serial mode is to send the `SET_SERIAL_MODE` command.
 
-Since Version 1.5.0 of the Library, a `recoverI2Cbus( SDA, SCL)` function is available to clear an I2C bus "hung" condition after an I2C error is reported.  If pin numbers are not specified, `recoverI2Cbus()` will use the default pin numbers specified in the board's `varints.h` file.
+Since Version 1.5.0 of the Library, a `recoverI2Cbus(TheWire SDA, SCL)` function is available to clear an I2C bus "hung" condition after an I2C error is reported.  If pin numbers are not specified, `recoverI2Cbus()` will use the default pin numbers specified in the board's `varints.h` file.
 
 Benewake is not forthcoming about the internals of the device, however they did share this:
 >Some commands that modify internal parameters are processed within 1ms.  Some commands (that) require the MCU to communicate with other chips may take several ms.  And some commands, such as saving configuration and restoring the factory (default settings) need to erase the FLASH of the MCU, which may take several hundred ms.

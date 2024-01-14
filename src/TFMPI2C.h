@@ -19,7 +19,7 @@
  *  any reason, your code must thereafter include an unsigned, 8-bit
  *  'addr' value at the end of every call to 'getData()' or 'sendCommand()'.
  *
- *  'getData( dist, flux, temp, addr)' passes back measurement values in
+ *  'getData( TheWire, dist, flux, temp, addr)' passes back measurement values in
  *  three signed, 16-bit variables:
  *     dist - distance to target in centimeters: 10cm - 1200cm,
  *     flux - strength, voltage or quality of returned signal
@@ -38,7 +38,7 @@
  *  One uses the default address 'getData( dist)' and the other allows an address
  *  to be included 'getData( dist, addr)'.
  *
- * 'sendCommand( cmnd, param, addr)'
+ * 'sendCommand( TheWire, cmnd, param, addr)'
  *  The function sends an unsigned 32-bit command and an unsigned 32-bit
  *  parameter value plus an optional, unsigned, 8-bit I2C device address.
  *  If the function completes without error it returns 'true' and sets
@@ -199,6 +199,8 @@
 //#define TFMP_LOHI          2  // IO output: near low and far high
 
 
+#include <Wire.h>          //  Arduino I2C/Two-Wire Library
+
 // Object Class Definitions
 class TFMPI2C
 {
@@ -213,20 +215,20 @@ class TFMPI2C
 
     // Get a device data-frame and pass back three values
     // using an explicit I2C address
-    bool getData( int16_t &dist, int16_t &flux, int16_t &temp, uint8_t addr);
+    bool getData( TwoWire TheWire, int16_t &dist, int16_t &flux, int16_t &temp, uint8_t addr);
     // Short version using explicit I2C address
-    bool getData( int16_t &dist, uint8_t addr);
+    bool getData( TwoWire TheWire, int16_t &dist, uint8_t addr);
 
     // Get a device data-frame and pass back three values
     // using an implied default I2C address
-    bool getData( int16_t &dist, int16_t &flux, int16_t &temp);
+    bool getData( TwoWire TheWire, int16_t &dist, int16_t &flux, int16_t &temp);
     // Short version using implied default I2C address
-    bool getData( int16_t &dist);
+    bool getData( TwoWire TheWire, int16_t &dist);
 
     // Send a command, a parameter and an address. Check response.
-    bool sendCommand( uint32_t cmnd, uint32_t param, uint8_t addr);
+    bool sendCommand( TwoWire TheWire, uint32_t cmnd, uint32_t param, uint8_t addr);
     // Send a command and check response using default address.
-    bool sendCommand( uint32_t cmnd, uint32_t param);
+    bool sendCommand( TwoWire TheWire, uint32_t cmnd, uint32_t param);
 
     //  For testing purposes:
     //  Print status and frame data as string of HEX characters
@@ -236,10 +238,9 @@ class TFMPI2C
     //  Looking for Y/N keyboard input
     bool getResponse();
     //  Recover specified I2C bus
-    void recoverI2CBus( uint8_t dataPin, uint8_t clockPin);
+    void recoverI2CBus( TwoWire TheWire, uint8_t dataPin, uint8_t clockPin);
     //  Recover I2C bus using default pin numbers
     //  Includes second bus, if any
-    void recoverI2CBus();
 
   private:
     uint8_t frame[ TFMP_FRAME_SIZE + 1];
